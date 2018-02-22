@@ -9,7 +9,6 @@ from sklearn.model_selection import train_test_split
 class woe_result(object):
     'Результаты биннинга'
     def __init(self):
-        self.cat_col = None
         self.iv = None
         self.bin_map = None
         self.sum_table = None
@@ -38,8 +37,6 @@ def calc_woe_iv(X_train, y_train, cat_col):
 
     result = woe_result()
     
-    result.cat_col = cat_col
-    
     sum_tab = pd.DataFrame({'bads': bads, 'goods': goods}, dtype=np.float64)
     sum_tab.loc[np.isnan(sum_tab['bads']), 'bads'] = 0
     sum_tab.loc[np.isnan(sum_tab['goods']), 'goods'] = 0
@@ -59,7 +56,7 @@ def calc_woe_iv(X_train, y_train, cat_col):
     calc_woe(result.sum_table)
     result.iv = result.sum_table['iv'].sum()
     
-    while len(result.sum_table) > 3:
+    while len(result.sum_table):
         sorted_sum_tab = result.sum_table.copy()
         sorted_sum_tab.sort_values(by='woe')
         closest_bin = find_closest_bin(sorted_sum_tab)
@@ -139,25 +136,9 @@ cat_columns = col_t[
     (col_t['column_name'].isin(X_cols))
     ]['column_name']
 
-iv_calc_results = {}
+iv_calc_result = {}
 for cat_col in cat_columns:
-    iv_calc_results[cat_col] = calc_woe_iv(X_train, y_train, cat_col)
+    iv_calc_result[cat_col] = calc_woe_iv(X_train, y_train, cat_col)
 
-woe_series = []
-for iv_calc_result in iv_calc_results.items():
-    bin_map = iv_calc_result[1].bin_map
-    col_name = iv_calc_result[1].cat_col
-    sum_tab = iv_calc_result[1].sum_table
 
-    cat_woe_map = {}
-    for r in sum_tab.iterrows():
-        for bin in bin_map:
-            if str(bin) == r[0]:
-                for cat in bin:
-                    cat_woe_map[cat] = r[1].woe
 
-    woe_ser = X_train[col_name].transform(lambda x: cat_woe_map[x])
-    woe_ser.name = woe_ser.name + '_WOE'
-    woe_series.append(woe_ser)    
-
-X_train = X_train.join(woe_series)
